@@ -1,0 +1,39 @@
+#!/bin/bash
+
+source /etc/cloudrun/worker.conf
+
+RO_DIR="$WORK_DIR/fs"
+RW_DIR="$WORK_DIR/rw"
+RW_TMP_DIR="$WORK_DIR/tmp"
+
+mkdir -p "$RO_DIR" "$RW_DIR"  "$RW_TMP_DIR" "$ROOT_DIR"
+if [ $? -ne 0 ]; then
+    echo "Unable to create work directories"
+    exit
+fi
+
+ulimit -n 102400
+cloudrun-fs "$FS_META_FILE" "$HASH_STORE_DIR" "$PRIVATE_STORE_DIR" "$FILE_SERVER" "$RO_DIR"
+if [ $? -ne 0 ]; then
+    echo "Unable to mount cloudrun-fs"
+    exit
+fi
+
+mount -t overlay overlay -o lowerdir=/etc/cloudrun/override:"$RO_DIR",upperdir="$RW_DIR",workdir="$RW_TMP_DIR" "$ROOT_DIR"
+if [ $? -ne 0 ]; then
+    echo "Unable to mount overlay"
+    exit
+fi
+
+lxc-start -n cloudrun -P /etc/cloudrun/lxc
+if [ $? -ne 0 ]; then
+    echo "Unable to start the container"
+    exit
+fi
+
+read -n 1 -s -p "Session open, press any key to exit"
+
+lxc-stop -n cloudrun -P /etc/cloudrun/lxc
+
+umount "$ROOT_DIR"
+fusermount -u "$RO_DIR"

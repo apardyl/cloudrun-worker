@@ -2,7 +2,7 @@ lxc.include = /usr/share/lxc/config/common.conf
 lxc.arch = linux64
 
 # Container specific configuration
-lxc.rootfs.path = dir:/tmp/cloudrun/fs
+lxc.rootfs.path = dir:/tmp/cloudrun/rootfs
 lxc.uts.name = cloudrun
 lxc.init.cmd = /sbin/init --unit=multi-user.target
 
