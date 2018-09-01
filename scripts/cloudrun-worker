@@ -13,34 +13,40 @@ function cleanup () {
     exit 1
 }
 
+echo "Starting cloudrun-worker"
+
 trap cleanup SIGTERM SIGINT SIGHUP
 
 mkdir -p "$RO_DIR" "$RW_DIR"  "$RW_TMP_DIR" "$ROOT_DIR"
 if [ $? -ne 0 ]; then
-    echo "Unable to create work directories"
+    echo "ERROR: Unable to create work directories"
     exit
 fi
 
+echo "Mounting cloudrun-fs"
 ulimit -n 102400
 cloudrun-fs "$FS_META_FILE" "$HASH_STORE_DIR" "$PRIVATE_STORE_DIR" "$FILE_SERVER" "$RO_DIR"
 if [ $? -ne 0 ]; then
-    echo "Unable to mount cloudrun-fs"
+    echo "ERROR: Unable to mount cloudrun-fs"
     exit
 fi
 
+echo "Mounting overlay"
 mount -t overlay overlay -o lowerdir=/etc/cloudrun/override:"$RO_DIR",upperdir="$RW_DIR",workdir="$RW_TMP_DIR" "$ROOT_DIR"
 if [ $? -ne 0 ]; then
-    echo "Unable to mount overlay"
+    echo "ERROR: Unable to mount overlay"
     exit
 fi
 
-lxc-start -n cloudrun -P /etc/cloudrun/lxc
+echo "Starting lxc"
+lxc-start -n cloudrun -P /etc/cloudrun/lxc -l99
 if [ $? -ne 0 ]; then
-    echo "Unable to start the container"
+    echo "ERROR: Unable to start the container"
     exit
 fi
+echo "Worker started"
 
-read -n 1 -s -p "Session open"
+read
 
 lxc-stop -n cloudrun -P /etc/cloudrun/lxc
 umount "$ROOT_DIR"
