@@ -6,6 +6,15 @@ RO_DIR="$WORK_DIR/fs"
 RW_DIR="$WORK_DIR/rw"
 RW_TMP_DIR="$WORK_DIR/tmp"
 
+function cleanup () {
+    lxc-stop -n cloudrun -P /etc/cloudrun/lxc -k
+    umount "$ROOT_DIR"
+    fusermount -u "$RO_DIR"
+    exit 1
+}
+
+trap cleanup SIGTERM SIGINT SIGHUP
+
 mkdir -p "$RO_DIR" "$RW_DIR"  "$RW_TMP_DIR" "$ROOT_DIR"
 if [ $? -ne 0 ]; then
     echo "Unable to create work directories"
@@ -31,9 +40,8 @@ if [ $? -ne 0 ]; then
     exit
 fi
 
-read -n 1 -s -p "Session open, press any key to exit"
+read -n 1 -s -p "Session open"
 
 lxc-stop -n cloudrun -P /etc/cloudrun/lxc
-
 umount "$ROOT_DIR"
 fusermount -u "$RO_DIR"
