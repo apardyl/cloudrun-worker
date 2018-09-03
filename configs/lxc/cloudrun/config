@@ -6,5 +6,17 @@ lxc.rootfs.path = dir:/tmp/cloudrun/rootfs
 lxc.uts.name = cloudrun
 lxc.init.cmd = /sbin/init --unit=multi-user.target
 
+# Internal network configuration
+lxc.net.0.type = veth
+lxc.net.0.link = cloudrun-int
+lxc.net.0.ipv4.address = 172.30.30.2/30
+lxc.net.0.name = cloudrun-int
+lxc.net.0.flags = up
+
 # Network configuration
-lxc.net.0.type = empty
+# lxc.net.1.type = veth
+# lxc.net.1.link = br-wan
+# lxc.net.1.ipv4.address = 4.3.2.1/24
+# lxc.net.1.ipv4.gateway = 1.2.3.4
+# lxc.net.1.name = eth0
+# lxc.net.1.flags = up

@@ -6,20 +6,46 @@ RO_DIR="$WORK_DIR/fs"
 RW_DIR="$WORK_DIR/rw"
 RW_TMP_DIR="$WORK_DIR/tmp"
 
+ssh-keygen -A -f /etc/cloudrun/override
+
+function host-network-up () {
+    set -e
+    ip link add name cloudrun-int type bridge
+    ip link set cloudrun-int up
+    ip address add 172.30.30.1/30 dev cloudrun-int
+}
+
+function host-network-down () {
+    ip link set cloudrun-int down
+    ip link delete cloudrun-int type bridge
+}
+
+function generate-configs () {
+    set -e
+    sed -E 's/^([^:]*).*/\1:!!:17752::::::/' < "$RO_DIR"/etc/passwd > "$ROOT_DIR"/etc/shadow
+}
 function cleanup () {
     lxc-stop -n cloudrun -P /etc/cloudrun/lxc -k
     umount "$ROOT_DIR"
     fusermount -u "$RO_DIR"
-    exit 1
+    host-network-down
+    exit
 }
 
 echo "Starting cloudrun-worker"
 
-trap cleanup SIGTERM SIGINT SIGHUP
+trap cleanup SIGTERM SIGINT SIGHUP EXIT
 
 mkdir -p "$RO_DIR" "$RW_DIR"  "$RW_TMP_DIR" "$ROOT_DIR"
 if [ $? -ne 0 ]; then
     echo "ERROR: Unable to create work directories"
+    exit
+fi
+
+echo "Setting up internal network"
+host-network-up
+if [ $? -ne 0 ]; then
+    echo "ERROR: Unable to setup internal network"
     exit
 fi
 
@@ -38,8 +64,15 @@ if [ $? -ne 0 ]; then
     exit
 fi
 
+echo "Generating configs"
+generate-configs
+if [ $? -ne 0 ]; then
+    echo "ERROR: Unable to generate configs"
+    exit
+fi
+
 echo "Starting lxc"
-lxc-start -n cloudrun -P /etc/cloudrun/lxc -l99
+lxc-start -n cloudrun -P /etc/cloudrun/lxc
 if [ $? -ne 0 ]; then
     echo "ERROR: Unable to start the container"
     exit
@@ -47,7 +80,3 @@ fi
 echo "Worker started"
 
 read
-
-lxc-stop -n cloudrun -P /etc/cloudrun/lxc
-umount "$ROOT_DIR"
-fusermount -u "$RO_DIR"
