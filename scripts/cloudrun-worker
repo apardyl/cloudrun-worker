@@ -22,8 +22,13 @@ function host-network-down () (
 
 function generate-configs () (
     set -e
+    # Generate /etc/shadow as we cannot get it from client
     sed -E 's/^([^:]*).*/\1:!!:17752::::::/' < "$RO_DIR"/etc/passwd > "$ROOT_DIR"/etc/shadow
+    # Enable sshd at boot
     ln -sf /etc/systemd/system/sshd-cloudrun.service "$ROOT_DIR"/etc/systemd/system/multi-user.target.wants/sshd-cloudrun.service
+    # Generate machine-id
+    dbus-uuidgen > "$ROOT_DIR"/etc/machine-id
+    ln -sf /etc/machine-id "$ROOT_DIR"/var/lib/dbus/machine-id
 )
 
 function cleanup () {
